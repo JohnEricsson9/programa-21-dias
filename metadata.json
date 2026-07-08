@@ -1,0 +1,6 @@
+{
+  "name": "Programa 21 Dias",
+  "description": "Questionário dinâmico e avaliação de perfil personalizada com painel administrativo completo e persistência de dados.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

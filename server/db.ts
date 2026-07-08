@@ -1,0 +1,1242 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { 
+  User, 
+  Question, 
+  QuestionOption, 
+  Profile, 
+  ProfileRule, 
+  UserAnswer, 
+  Result,
+  Program,
+  Mission,
+  CheckIn,
+  UserProgress,
+  CommunityPost,
+  Achievement,
+  SupportMessage
+} from '../src/types';
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const DB_FILE = path.join(DATA_DIR, 'db.json');
+
+interface Schema {
+  programs: Program[];
+  users: User[];
+  questions: Question[];
+  options: QuestionOption[];
+  profiles: Profile[];
+  profileRules: ProfileRule[];
+  answers: UserAnswer[];
+  results: Result[];
+  missions: Mission[];
+  checkins: CheckIn[];
+  progress: UserProgress[];
+  posts: CommunityPost[];
+  achievements: Achievement[];
+  supportMessages?: SupportMessage[];
+}
+
+const DEFAULT_PROGRAMS: Program[] = [
+  {
+    id: 'prog-tabagismo',
+    name: 'Tabagismo',
+    slug: 'tabagismo',
+    description: 'Metodologia científica para superação do vício físico e psicológico do cigarro em 21 dias.',
+    icon: 'Wind',
+    color: 'emerald'
+  },
+  {
+    id: 'prog-ansiedade',
+    name: 'Ansiedade',
+    slug: 'ansiedade',
+    description: 'Controle de crises, desaceleração de pensamentos e regulação do sistema nervoso.',
+    icon: 'Brain',
+    color: 'sky'
+  },
+  {
+    id: 'prog-insonia',
+    name: 'Insônia & Sono',
+    slug: 'insonia',
+    description: 'Reeducação de hábitos circadianos, descompressão mental pré-sono e higiene noturna.',
+    icon: 'Moon',
+    color: 'indigo'
+  },
+  {
+    id: 'prog-emagrecimento',
+    name: 'Emagrecimento',
+    slug: 'emagrecimento',
+    description: 'Reprogramação da relação com a comida, controle da fome emocional e hábitos sustentáveis.',
+    icon: 'Flame',
+    color: 'amber'
+  },
+  {
+    id: 'prog-estresse',
+    name: 'Gestão de Estresse',
+    slug: 'estresse',
+    description: 'Técnicas de descompressão diária, prevenção de burnout e imunidade mental.',
+    icon: 'ShieldAlert',
+    color: 'rose'
+  }
+];
+
+const DEFAULT_PROFILES: Profile[] = [
+  // --- TABAGISMO ---
+  {
+    id: 'perf-tab-impulsivo',
+    programId: 'prog-tabagismo',
+    name: 'Impulsivo / Explorador',
+    icon: '🚀',
+    color: 'orange',
+    summary: 'Você possui uma forte tendência à busca de recompensas rápidas e ações baseadas no calor do momento. Você responde melhor a estímulos de curto prazo e metas tangíveis.',
+    characteristics: ['Busca recompensa imediata', 'Age antes de pensar', 'Tem dificuldade em controlar impulsos', 'Prefere pequenas vitórias', 'Responde melhor a desafios curtos'],
+    gamificationType: 'Missões rápidas, muito XP, barras de progresso grandes, desafios diários, recompensas frequentes',
+    mainMessage: 'Você vence uma pequena batalha por vez.',
+    preferredMissions: ['Missões rápidas de 1 min', 'Gatilho do copo d\'água', 'Pausa ativa respiratória'],
+    rewards: ['Dobro de XP', 'Selo de Velocidade', 'Baú da Recompensa Express'],
+    customReportText: 'Seu perfil indica alta impulsividade em situações de estresse. É fundamental concentrar-se no momento presente e criar pequenas barreiras de atrito entre a fissura e o ato de fumar.',
+    keyPoints: ['Busca novidades', 'Quer resultados rápidos', 'Age por impulso', 'Gosta de desafios'],
+    recommendedObjective: 'Focar em mini-desafios diários de respiração e adiar o cigarro em picos de fissura.'
+  },
+  {
+    id: 'perf-tab-analitico',
+    programId: 'prog-tabagismo',
+    name: 'Analítico / Estrategista',
+    icon: '🧠',
+    color: 'blue',
+    summary: 'Seu perfil é caracterizado por uma forte necessidade de compreender os processos biológicos e lógicos por trás de suas escolhas. Mudar exige clareza, dados e estrutura planejada.',
+    characteristics: ['Precisa entender o motivo das tarefas', 'Gosta de planejamento', 'Aprende através de informação', 'Valoriza lógica', 'Responde bem a conteúdos explicativos'],
+    gamificationType: 'Estatísticas, gráficos, relatórios, comparação do progresso, objetivos semanais',
+    mainMessage: 'Cada decisão consciente fortalece seu autocontrole.',
+    preferredMissions: ['Leitura científica do hábito', 'Mapeamento lógico de gatilhos', 'Relatório de gatilho cognitivo'],
+    rewards: ['Acesso a Relatório Completo', 'Medalha do Saber', 'Gráficos de Saúde Avançados'],
+    customReportText: 'Como analítico, você necessita de dados sólidos e lógica comportamental para se manter motivado. Entender a ciência por trás da abstinência é sua maior arma.',
+    keyPoints: ['Gosta de entender', 'Analisa antes de agir', 'Planeja bastante'],
+    recommendedObjective: 'Registrar e mapear com precisão matemática cada gatilho e acompanhar gráficos de saúde.'
+  },
+  {
+    id: 'perf-tab-social',
+    programId: 'prog-tabagismo',
+    name: 'Social / Conector',
+    icon: '🤝',
+    color: 'emerald',
+    summary: 'O suporte social e a conexão com outras pessoas na mesma caminhada são os pilares da sua mudança de hábito. Compartilhar vitórias blinda sua determinação.',
+    characteristics: ['Influenciado pelo ambiente', 'Influenciado pelas pessoas', 'Precisa de incentivo', 'Responde muito bem à comunidade', 'Gosta de compartilhar conquistas'],
+    gamificationType: 'Incentivo à comunidade, medalhas por participação, selos por ajudar pessoas, missões coletivas, ranking de colaboração',
+    mainMessage: 'Você evolui ainda mais quando caminha junto com outras pessoas.',
+    preferredMissions: ['Postar vitória diária no mural', 'Apoiar um colega em fissura', 'Desafio coletivo do dia'],
+    rewards: ['Selo de Mentor Comunitário', 'Destaque no Mural', 'Troféu Conector Social'],
+    customReportText: 'Sua motivação está intimamente conectada à aprovação e troca com um grupo social de apoio. Use o mural da comunidade do NeuroPure para ancorar sua constância.',
+    keyPoints: ['Valoriza apoio', 'Aprende com outras pessoas', 'Gosta de feedback social'],
+    recommendedObjective: 'Interagir no mural diariamente e inspirar outras pessoas compartilhando vitórias reais.'
+  },
+  {
+    id: 'perf-tab-persistente',
+    programId: 'prog-tabagismo',
+    name: 'Persistente / Guardião',
+    icon: '🛡️',
+    color: 'purple',
+    summary: 'Sua força reside na capacidade de estruturar uma rotina estável e mantê-la consistentemente. Contudo, seu maior desafio será a guarda baixa após atingir o objetivo principal.',
+    characteristics: ['Tem disciplina', 'Cumpre metas', 'Gosta de progresso', 'Mantém rotina', 'Possui maior risco de recaída após atingir o objetivo'],
+    gamificationType: 'Sequência de dias (Streak), medalhas de consistência, calendário de progresso, desbloqueio por tempo, grandes recompensas por continuidade',
+    mainMessage: 'Constância supera intensidade.',
+    preferredMissions: ['Manter streak de check-in intacto', 'Cronograma de consistência', 'Micro-hábito matinal inflexível'],
+    rewards: ['Multiplicador de Streak', 'Baú da Perseverança', 'Título de Guardião do Streak'],
+    customReportText: 'Você é focado em processos de longo prazo. A sua capacidade de manter um streak é excelente, mas lembre-se de monitorar de perto os períodos pós-conclusão de metas.',
+    keyPoints: ['Organizado', 'Disciplinado', 'Gosta de rotina'],
+    recommendedObjective: 'Proteger obstinadamente sua sequência diária e rituais comportamentais.'
+  },
+  {
+    id: 'perf-tab-emocional',
+    programId: 'prog-tabagismo',
+    name: 'Emocional / Renovador',
+    icon: '🌱',
+    color: 'rose',
+    summary: 'Sua relação com o hábito é profundamente entrelaçada com as flutuações do seu estado emocional. Desenvolver sua inteligência emocional e autorregulação é a chave mestra para sua nova vida.',
+    characteristics: ['Busca aliviar emoções', 'Sensível ao estresse', 'Fuma para aliviar sentimentos', 'Possui gatilhos emocionais', 'Necessita trabalhar autorregulação'],
+    gamificationType: 'Mensagens motivacionais, check-ins emocionais, diário de sentimentos, medalhas por autocuidado, celebração de pequenas vitórias',
+    mainMessage: 'Cada emoção compreendida fortalece sua transformação.',
+    preferredMissions: ['Meditação da atenção plena', 'Escrever no diário de sentimentos', 'Suspiro fisiológico regenerativo'],
+    rewards: ['Selo de Inteligência Emocional', 'Medalha do Autocuidado', 'Acesso a Áudio SOS Exclusivo'],
+    customReportText: 'Gatilhos emocionais como raiva, tédio e tristeza disparam o impulso em seu perfil. Acolher essas emoções sem julgamento e usar a respiração como âncora é essencial.',
+    keyPoints: ['Muito sensível às emoções', 'Busca conforto', 'Oscila conforme o estado emocional'],
+    recommendedObjective: 'Praticar o diário de sentimentos e respirações profundas em momentos de alta sensibilidade.'
+  },
+
+  // --- ANSIEDADE (For Backwards-Compatibility fallback) ---
+  {
+    id: 'perf-ans-hiperfoco',
+    programId: 'prog-ansiedade',
+    name: 'Pragmático Sob Pressão',
+    icon: '⚡',
+    color: 'amber',
+    summary: 'Sua ansiedade se manifesta como uma necessidade de hiperatividade e controle. Você foca em resolver tudo imediatamente, acumulando tarefas e tensionando a mente.',
+    characteristics: ['Planejamento obsessivo', 'Grande produtividade, mas alta exaustão'],
+    gamificationType: 'Estatísticas de foco, metas semanais de desaceleração',
+    mainMessage: 'Desacelerar também é progresso.',
+    preferredMissions: ['Micro-pausas a cada 90 minutos'],
+    rewards: ['Selo da Paz'],
+    customReportText: 'Seu perfil reage à ansiedade por hiperatividade. Aprender a delegar e aceitar a imperfeição é vital.',
+    keyPoints: ['Planejamento obsessivo', 'Grande produtividade', 'Dificuldade em desconectar'],
+    recommendedObjective: 'Estabelecer um horário rígido de término de atividades.'
+  },
+  {
+    id: 'perf-ans-emocional',
+    programId: 'prog-ansiedade',
+    name: 'Sentidor Empático',
+    icon: '❤️',
+    color: 'rose',
+    summary: 'Sua mente absorve intensamente as emoções e o clima do ambiente. Críticas ou desavenças sociais geram crises de ruminação.',
+    characteristics: ['Sensibilidade interpessoal extrema'],
+    gamificationType: 'Mensagens de suporte, check-in emocional diário',
+    mainMessage: 'Proteja seu espaço mental.',
+    preferredMissions: ['Esvaziamento mental matinal'],
+    rewards: ['Medalha de Autocuidado'],
+    customReportText: 'Você absorve o estresse ao seu redor. Criar rituais matinais de blindagem mental ajudará a preservar seu equilíbrio.',
+    keyPoints: ['Sensibilidade interpessoal extrema', 'Fuga emocional por telas'],
+    recommendedObjective: 'Praticar o diário de esvaziamento mental pela manhã.'
+  },
+
+  // --- INSÔNIA ---
+  {
+    id: 'perf-ins-inquieto',
+    programId: 'prog-insonia',
+    name: 'Mente Noturna Acelerada',
+    icon: '🌙',
+    color: 'indigo',
+    summary: 'O travesseiro se torna o palco de suas preocupações. Quando você apaga a luz, seu cérebro aciona o modo de planejamento.',
+    characteristics: ['Inabilidade de silenciar o diálogo interno'],
+    gamificationType: 'Gráficos de higiene noturna',
+    mainMessage: 'A noite é para descansar, não para resolver.',
+    preferredMissions: ['Caderno de preocupações pré-sono'],
+    rewards: ['Medalha do Sono Profundo'],
+    customReportText: 'Sua mente acelera no escuro. Adote rituais analógicos de esvaziamento de pensamentos para sinalizar segurança ao cérebro.',
+    keyPoints: ['Inabilidade de silenciar pensamentos'],
+    recommendedObjective: 'Adotar a técnica de escrita de problemas antes de ir para a cama.'
+  },
+  {
+    id: 'perf-ins-desregulada',
+    programId: 'prog-insonia',
+    name: 'Desregulado Circadiano',
+    icon: '⏰',
+    color: 'sky',
+    summary: 'Sua rotina de sono varia constantemente devido a horários flexíveis, trabalho ou hábitos de tela.',
+    characteristics: ['Exposição pesada à luz azul à noite'],
+    gamificationType: 'Desafios de consistência de horários',
+    mainMessage: 'O ritmo do corpo ama consistência.',
+    preferredMissions: ['Pôr do sol digital às 21h'],
+    rewards: ['Selo do Ritmo Certo'],
+    customReportText: 'Sincronizar seu relógio biológico com horários fixos de despertar trará energia renovada.',
+    keyPoints: ['Exposição à luz de telas de noite'],
+    recommendedObjective: 'Acordar sempre no mesmo horário, todos os dias.'
+  },
+
+  // --- EMAGRECIMENTO ---
+  {
+    id: 'perf-ema-emocional',
+    programId: 'prog-emagrecimento',
+    name: 'Comedor Emocional',
+    icon: '🥗',
+    color: 'emerald',
+    summary: 'A comida funciona para você como um anestésico contra o estresse, tédio, solidão ou frustração.',
+    characteristics: ['Compulsão súbita sob fortes sentimentos'],
+    gamificationType: 'Diários de fome física vs emocional',
+    mainMessage: 'Nutra seu corpo, acolha sua alma.',
+    preferredMissions: ['Método STOP antes de comer por impulso'],
+    rewards: ['Medalha de Consciência Alimentar'],
+    customReportText: 'Identificar a fome emocional antes de comer mudará seu corpo de forma duradoura.',
+    keyPoints: ['Compulsão focada em carboidratos'],
+    recommendedObjective: 'Praticar pausas respiratórias antes de abrir a geladeira por impulso.'
+  },
+  {
+    id: 'perf-ema-planejador',
+    programId: 'prog-emagrecimento',
+    name: 'Falta de Estrutura',
+    icon: '🍱',
+    color: 'amber',
+    summary: 'Você quer se alimentar bem, mas a rotina te pega desprevenido.',
+    characteristics: ['Decisões alimentares sob extrema fome'],
+    gamificationType: 'Estatísticas de refeições preparadas',
+    mainMessage: 'O planejamento é o seu maior escudo.',
+    preferredMissions: ['Planejar as refeições de amanhã hoje'],
+    rewards: ['Selo do Planejador'],
+    customReportText: 'Deixar lanches saudáveis pré-organizados evitará decisões impulsivas movidas pelo cansaço do dia.',
+    keyPoints: ['Decisões baseadas na conveniência'],
+    recommendedObjective: 'Mapear e organizar as refeições da semana no domingo.'
+  },
+
+  // --- ESTRESSE ---
+  {
+    id: 'perf-est-sobrecarregado',
+    programId: 'prog-estresse',
+    name: 'Sobrecarregado Crônico',
+    icon: '💆',
+    color: 'rose',
+    summary: 'Você ultrapassou seus limites físicos e mentais por muito tempo. Sente-se constantemente à beira de um colapso.',
+    characteristics: ['Cansaço físico crônico que não passa'],
+    gamificationType: 'Controle de nível de energia e micro-pausas',
+    mainMessage: 'Seu corpo pede uma pausa consciente.',
+    preferredMissions: ['Micro-pausa restaurativa de 2 minutos'],
+    rewards: ['Selo da Descompressão'],
+    customReportText: 'Seu nível de cortisol está cronicamente elevado. Inserir micro-pausas obrigatórias é sua prioridade de saúde hoje.',
+    keyPoints: ['Cansaço crônico', 'Paciência curta'],
+    recommendedObjective: 'Inserir pausas para fechar os olhos e respirar durante o trabalho.'
+  },
+  {
+    id: 'perf-est-reativo',
+    programId: 'prog-estresse',
+    name: 'Vulcão Emocional',
+    icon: '🌋',
+    color: 'orange',
+    summary: 'Seu estresse transborda de forma explosiva em respostas ríspidas, irritabilidade imediata e ansiedade impulsiva.',
+    characteristics: ['Reações desproporcionais a imprevistos'],
+    gamificationType: 'Diários de picos de estresse e autorregulação',
+    mainMessage: 'A respiração é o freio de mão do seu estresse.',
+    preferredMissions: ['Exercício do suspiro fisiológico duplo'],
+    rewards: ['Medalha de Autogestão'],
+    customReportText: 'Seu estresse acumula no corpo físico. Exercitar o suspiro fisiológico regular acalmará seu batimento e reações sob pressão.',
+    keyPoints: ['Tensão muscular no pescoço', 'Irritabilidade rápida'],
+    recommendedObjective: 'Usar o suspiro fisiológico em picos de estresse imediato.'
+  }
+];
+
+const DEFAULT_QUESTIONS: Question[] = [
+  // --- TABAGISMO (10 dynamic behavior matrix questions) ---
+  { id: 'q-tab-1', programId: 'prog-tabagismo', text: 'Em qual situação você sente mais vontade de fumar?', order: 1 },
+  { id: 'q-tab-2', programId: 'prog-tabagismo', text: 'Quando tenta mudar um hábito você normalmente...', order: 2 },
+  { id: 'q-tab-3', programId: 'prog-tabagismo', text: 'Quando está sob pressão você...', order: 3 },
+  { id: 'q-tab-4', programId: 'prog-tabagismo', text: 'O que mais dificulta parar de fumar?', order: 4 },
+  { id: 'q-tab-5', programId: 'prog-tabagismo', text: 'Você prefere realizar suas tarefas diárias de qual forma?', order: 5 },
+  { id: 'q-tab-6', programId: 'prog-tabagismo', text: 'Quando falha em uma meta importante, como você reage?', order: 6 },
+  { id: 'q-tab-7', programId: 'prog-tabagismo', text: 'Sua maior motivação para parar de fumar hoje é...', order: 7 },
+  { id: 'q-tab-8', programId: 'prog-tabagismo', text: 'Você costuma manter novos hábitos por muito tempo?', order: 8 },
+  { id: 'q-tab-9', programId: 'prog-tabagismo', text: 'Quando sente ansiedade você normalmente...', order: 9 },
+  { id: 'q-tab-10', programId: 'prog-tabagismo', text: 'Qual destas frases combina mais com você?', order: 10 },
+
+  // --- ANSIEDADE ---
+  { id: 'q-ans-1', programId: 'prog-ansiedade', text: 'O que mais incomoda você nos seus episódios de ansiedade?', order: 1 },
+  { id: 'q-ans-2', programId: 'prog-ansiedade', text: 'Qual situação costuma disparar sua ansiedade de forma mais rápida?', order: 2 },
+  { id: 'q-ans-3', programId: 'prog-ansiedade', text: 'Como você costuma agir para aliviar o aperto no peito ou a mente cheia?', order: 3 },
+  { id: 'q-ans-4', programId: 'prog-ansiedade', text: 'Qual é o seu objetivo prioritário ao controlar a ansiedade?', order: 4 },
+
+  // --- INSÔNIA ---
+  { id: 'q-ins-1', programId: 'prog-insonia', text: 'Qual o maior desafio que você enfrenta em relação ao seu sono?', order: 1 },
+  { id: 'q-ins-2', programId: 'prog-insonia', text: 'Como costuma ser a sua rotina nos 40 minutos antes de deitar?', order: 2 },
+  { id: 'q-ins-3', programId: 'prog-insonia', text: 'Com que frequência você acorda cansado mesmo após várias horas na cama?', order: 3 },
+  { id: 'q-ins-4', programId: 'prog-insonia', text: 'Qual estimulante você mais consome na segunda metade do dia?', order: 4 },
+
+  // --- EMAGRECIMENTO ---
+  { id: 'q-ema-1', programId: 'prog-emagrecimento', text: 'Qual o seu principal obstáculo para se manter na reeducação alimentar?', order: 1 },
+  { id: 'q-ema-2', programId: 'prog-emagrecimento', text: 'Em qual momento você sente maior impulso de comer sem fome real?', order: 2 },
+  { id: 'q-ema-3', programId: 'prog-emagrecimento', text: 'Qual o seu nível atual de atividade física semanal?', order: 3 },
+  { id: 'q-ema-4', programId: 'prog-emagrecimento', text: 'Como você lida com frustrações ou furos na sua dieta?', order: 4 },
+
+  // --- ESTRESSE ---
+  { id: 'q-est-1', programId: 'prog-estresse', text: 'Qual a principal fonte de sobrecarga do seu dia a dia?', order: 1 },
+  { id: 'q-est-2', programId: 'prog-estresse', text: 'Onde você sente os sintomas do estresse se acumularem fisicamente?', order: 2 },
+  { id: 'q-est-3', programId: 'prog-estresse', text: 'Com que frequência você realiza pausas deliberadas para descompressão?', order: 3 },
+  { id: 'q-est-4', programId: 'prog-estresse', text: 'Qual habitó traria o maior alívio para sua rotina hoje?', order: 4 }
+];
+
+const DEFAULT_OPTIONS: QuestionOption[] = [
+  // --- OPTIONS TABAGISMO (10 questions * 5 options each for behavioral profile mapping) ---
+  // Q1
+  { id: 'o-tab-1-1', questionId: 'q-tab-1', text: 'Após o café ou bebidas estimulantes', profileWeights: { 'perf-tab-impulsivo': 3, 'perf-tab-analitico': 1 } },
+  { id: 'o-tab-1-2', questionId: 'q-tab-1', text: 'Quando estou ansioso ou estressado', profileWeights: { 'perf-tab-emocional': 3 } },
+  { id: 'o-tab-1-3', questionId: 'q-tab-1', text: 'Quando estou em eventos sociais com amigos', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-1-4', questionId: 'q-tab-1', text: 'Logo após terminar o trabalho ou refeições', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-1-5', questionId: 'q-tab-1', text: 'Quando me sinto frustrado ou entediado', profileWeights: { 'perf-tab-emocional': 3, 'perf-tab-impulsivo': 2 } },
+
+  // Q2
+  { id: 'o-tab-2-1', questionId: 'q-tab-2', text: 'Desisto rapidamente na primeira dificuldade', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-2-2', questionId: 'q-tab-2', text: 'Preciso entender exatamente como funciona antes', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-2-3', questionId: 'q-tab-2', text: 'Procuro alguém de confiança para me incentivar', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-2-4', questionId: 'q-tab-2', text: 'Sigo firme e com muita disciplina até conseguir', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-2-5', questionId: 'q-tab-2', text: 'Depende muito de como está meu humor no dia', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q3
+  { id: 'o-tab-3-1', questionId: 'q-tab-3', text: 'Ajo sem pensar e acabo fumando por impulso', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-3-2', questionId: 'q-tab-3', text: 'Analiso a situação calmamente antes de agir', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-3-3', questionId: 'q-tab-3', text: 'Procuro conversar com alguém para desabafar', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-3-4', questionId: 'q-tab-3', text: 'Sigo fazendo o que precisa ser feito rigidamente', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-3-5', questionId: 'q-tab-3', text: 'Fico muito abalado emocionalmente e estressado', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q4
+  { id: 'o-tab-4-1', questionId: 'q-tab-4', text: 'Lidar com a fissura e vontade física repentina', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-4-2', questionId: 'q-tab-4', text: 'O medo do fracasso e de não aguentar a abstinência', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-4-3', questionId: 'q-tab-4', text: 'Estar em ambientes ou com pessoas que fumam', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-4-4', questionId: 'q-tab-4', text: 'Quebrar a rotina e os gatilhos automáticos diários', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-4-5', questionId: 'q-tab-4', text: 'Controlar as oscilações de humor e a irritabilidade', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q5
+  { id: 'o-tab-5-1', questionId: 'q-tab-5', text: 'Terminar tudo o mais rápido possível para relaxar', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-5-2', questionId: 'q-tab-5', text: 'Planejar detalhadamente antes de dar o primeiro passo', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-5-3', questionId: 'q-tab-5', text: 'Trabalhar em equipe ou compartilhando o progresso', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-5-4', questionId: 'q-tab-5', text: 'Criar uma rotina consistente de horários fixos', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-5-5', questionId: 'q-tab-5', text: 'Fazer as tarefas de acordo com minha disposição', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q6
+  { id: 'o-tab-6-1', questionId: 'q-tab-6', text: 'Desisto e perco o interesse na meta inteira', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-6-2', questionId: 'q-tab-6', text: 'Analiso os erros para ajustar a estratégia lógica', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-6-3', questionId: 'q-tab-6', text: 'Procuro conforto e apoio em amigos ou comunidade', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-6-4', questionId: 'q-tab-6', text: 'Recomeço imediatamente no mesmo dia com disciplina', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-6-5', questionId: 'q-tab-6', text: 'Fico muito decepcionado e me cobro em excesso', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q7
+  { id: 'o-tab-7-1', questionId: 'q-tab-7', text: 'Ganhar disposição física e saúde a curto prazo', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-7-2', questionId: 'q-tab-7', text: 'Economia financeira e dados reais de longevidade', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-7-3', questionId: 'q-tab-7', text: 'Minha família, filhos ou bem-estar social', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-7-4', questionId: 'q-tab-7', text: 'Ter total liberdade, independência e disciplina', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-7-5', questionId: 'q-tab-7', text: 'Recuperar meu amor-próprio e saúde emocional', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q8
+  { id: 'o-tab-8-1', questionId: 'q-tab-8', text: 'Nunca, me canso ou perco a novidade muito rápido', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-8-2', questionId: 'q-tab-8', text: 'Frequentemente, desde que haja um propósito lógico', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-8-3', questionId: 'q-tab-8', text: 'Às vezes, principalmente se outras pessoas fizerem junto', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-8-4', questionId: 'q-tab-8', text: 'Quase sempre, amo seguir rotinas e hábitos estáveis', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-8-5', questionId: 'q-tab-8', text: 'Raramente, desisto conforme meu humor oscila', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q9
+  { id: 'o-tab-9-1', questionId: 'q-tab-9', text: 'Procuro uma distração ou prazer imediato rápido', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-9-2', questionId: 'q-tab-9', text: 'Tento entender a raiz intelectual da minha ansiedade', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-9-3', questionId: 'q-tab-9', text: 'Converso com alguém próximo para me acalmar', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-9-4', questionId: 'q-tab-9', text: 'Espero passar pacientemente focando em tarefas', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-9-5', questionId: 'q-tab-9', text: 'Sinto no corpo inteiro e busco abrigo ou isolamento', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // Q10
+  { id: 'o-tab-10-1', questionId: 'q-tab-10', text: 'Quero resultados visíveis e conquistas rápidas', profileWeights: { 'perf-tab-impulsivo': 3 } },
+  { id: 'o-tab-10-2', questionId: 'q-tab-10', text: 'Gosto de ter controle total, análises e entender tudo', profileWeights: { 'perf-tab-analitico': 3 } },
+  { id: 'o-tab-10-3', questionId: 'q-tab-10', text: 'Apoio e colaboração humana fazem toda a diferença', profileWeights: { 'perf-tab-social': 3 } },
+  { id: 'o-tab-10-4', questionId: 'q-tab-10', text: 'Constância e cumprimento rígido de metas são meu forte', profileWeights: { 'perf-tab-persistente': 3 } },
+  { id: 'o-tab-10-5', questionId: 'q-tab-10', text: 'Minhas emoções e rituais de autocuidado guiam meu rumo', profileWeights: { 'perf-tab-emocional': 3 } },
+
+  // --- OPTIONS ANSIEDADE ---
+  { id: 'o-ans-1-1', questionId: 'q-ans-1', text: 'Aceleração mental e pensamentos de catástrofe', profileWeights: { 'perf-ans-hiperfoco': 3 } },
+  { id: 'o-ans-1-2', questionId: 'q-ans-1', text: 'Aperto no peito, respiração curta e cansaço físico', profileWeights: { 'perf-ans-emocional': 3 } },
+  { id: 'o-ans-1-3', questionId: 'q-ans-1', text: 'Paralisia, medo de agir e procrastinação crônica', profileWeights: { 'perf-ans-emocional': 2, 'perf-ans-hiperfoco': 2 } },
+
+  { id: 'o-ans-2-1', questionId: 'q-ans-2', text: 'Cobranças no trabalho ou prazos apertados', profileWeights: { 'perf-ans-hiperfoco': 3 } },
+  { id: 'o-ans-2-2', questionId: 'q-ans-2', text: 'Conflitos com outras pessoas ou desentendimentos', profileWeights: { 'perf-ans-emocional': 3 } },
+  { id: 'o-ans-2-3', questionId: 'q-ans-2', text: 'Momentos de tédio ou quando fico sozinho com meus pensamentos', profileWeights: { 'perf-ans-emocional': 1, 'perf-ans-hiperfoco': 2 } },
+
+  { id: 'o-ans-3-1', questionId: 'q-ans-3', text: 'Me encho de tarefas para me manter ocupado', profileWeights: { 'perf-ans-hiperfoco': 3 } },
+  { id: 'o-ans-3-2', questionId: 'q-ans-3', text: 'Procuro distrações como redes sociais ou comer doces', profileWeights: { 'perf-ans-emocional': 3 } },
+  { id: 'o-ans-3-3', questionId: 'q-ans-3', text: 'Tento me isolar e esperar o sentimento ruim passar', profileWeights: { 'perf-ans-emocional': 2, 'perf-ans-hiperfoco': 1 } },
+
+  { id: 'o-ans-4-1', questionId: 'q-ans-4', text: 'Aumentar meu foco e clareza mental nas tomadas de decisão', profileWeights: { 'perf-ans-hiperfoco': 3 } },
+  { id: 'o-ans-4-2', questionId: 'q-ans-4', text: 'Sentir paz de espírito e estabilidade nas minhas relações', profileWeights: { 'perf-ans-emocional': 3 } },
+
+  // --- OPTIONS INSÔNIA ---
+  { id: 'o-ins-1-1', questionId: 'q-ins-1', text: 'Demoro mais de 30 minutos para conseguir adormecer', profileWeights: { 'perf-ins-inquieto': 3 } },
+  { id: 'o-ins-1-2', questionId: 'q-ins-1', text: 'Acordo várias vezes de madrugada e não volto a dormir', profileWeights: { 'perf-ins-desregulada': 2, 'perf-ins-inquieto': 2 } },
+  { id: 'o-ins-1-3', questionId: 'q-ins-1', text: 'Durmo, mas acordo com a sensação de desgaste físico severo', profileWeights: { 'perf-ins-desregulada': 3 } },
+
+  { id: 'o-ins-2-1', questionId: 'q-ins-2', text: 'Uso celular na cama, assisto TV ou trabalho na mesa', profileWeights: { 'perf-ins-desregulada': 3 } },
+  { id: 'o-ins-2-2', questionId: 'q-ins-2', text: 'Fico repassando problemas ou planejando o dia seguinte', profileWeights: { 'perf-ins-inquieto': 3 } },
+  { id: 'o-ins-2-3', questionId: 'q-ins-2', text: 'Leio, ouço algo calmo ou preparo um chá leve', profileWeights: { 'perf-ins-inquieto': 1, 'perf-ins-desregulada': 1 } },
+
+  { id: 'o-ins-3-1', questionId: 'q-ins-3', text: 'Quase todos os dias, preciso de muito esforço para render', profileWeights: { 'perf-ins-desregulada': 3 } },
+  { id: 'o-ins-3-2', questionId: 'q-ins-3', text: 'Às vezes, principalmente após dias estressantes', profileWeights: { 'perf-ins-inquieto': 3 } },
+
+  { id: 'o-ins-4-1', questionId: 'q-ins-4', text: 'Café, mate ou energéticos após às 15:00', profileWeights: { 'perf-ins-desregulada': 3 } },
+  { id: 'o-ins-4-2', questionId: 'q-ins-4', text: 'Alimentos pesados, gorduras ou açúcares no jantar', profileWeights: { 'perf-ins-inquieto': 3 } },
+
+  // --- OPTIONS EMAGRECIMENTO ---
+  { id: 'o-ema-1-1', questionId: 'q-ema-1', text: 'Compulsão por alimentos doces ou ultraprocessados', profileWeights: { 'perf-ema-emocional': 3 } },
+  { id: 'o-ema-1-2', questionId: 'q-ema-1', text: 'Falta de tempo para planejar e preparar refeições saudáveis', profileWeights: { 'perf-ema-planejador': 3 } },
+  { id: 'o-ema-1-3', questionId: 'q-ema-1', text: 'Oscilações intensas de motivação e desistências rápidas', profileWeights: { 'perf-ema-emocional': 2, 'perf-ema-planejador': 1 } },
+
+  { id: 'o-ema-2-1', questionId: 'q-ema-2', text: 'Sob estresse ou após discussões cansativas', profileWeights: { 'perf-ema-emocional': 3 } },
+  { id: 'o-ema-2-2', questionId: 'q-ema-2', text: 'À noite, por cansaço, tédio ou hábito em frente à TV', profileWeights: { 'perf-ema-emocional': 2, 'perf-ema-planejador': 2 } },
+  { id: 'o-ema-2-3', questionId: 'q-ema-2', text: 'Quando estou no trabalho e tenho opções fáceis perto de mim', profileWeights: { 'perf-ema-planejador': 3 } },
+
+  { id: 'o-ema-3-1', questionId: 'q-ema-3', text: 'Nenhum, sou sedentário e não gosto de treinar', profileWeights: { 'perf-ema-planejador': 3 } },
+  { id: 'o-ema-3-2', questionId: 'q-ema-3', text: 'Moderado, 1 a 2 vezes por semana sem constância', profileWeights: { 'perf-ema-emocional': 2 } },
+  { id: 'o-ema-3-3', questionId: 'q-ema-3', text: 'Consistente, 3+ vezes por semana', profileWeights: { 'perf-ema-planejador': 1 } },
+
+  { id: 'o-ema-4-1', questionId: 'q-ema-4', text: 'Me sinto culpado e acabo desistindo de toda a semana', profileWeights: { 'perf-ema-emocional': 3 } },
+  { id: 'o-ema-4-2', questionId: 'q-ema-4', text: 'Compenso fazendo jejuns longos ou exercícios extremos', profileWeights: { 'perf-ema-emocional': 1, 'perf-ema-planejador': 2 } },
+  { id: 'o-ema-4-3', questionId: 'q-ema-4', text: 'Compreendo como parte do processo e volto na refeição seguinte', profileWeights: { 'perf-ema-planejador': 2 } },
+
+  // --- OPTIONS ESTRESSE ---
+  { id: 'o-est-1-1', questionId: 'q-est-1', text: 'Trabalho excessivo, chefes exigentes ou metas surreais', profileWeights: { 'perf-est-sobrecarregado': 3 } },
+  { id: 'o-est-1-2', questionId: 'q-est-1', text: 'Relacionamento familiar ou pessoal desgastado', profileWeights: { 'perf-est-reativo': 3 } },
+  { id: 'o-est-1-3', questionId: 'q-est-1', text: 'Falta crônica de tempo para cuidar de mim mesmo', profileWeights: { 'perf-est-sobrecarregado': 2, 'perf-est-reativo': 2 } },
+
+  { id: 'o-est-2-1', questionId: 'q-est-2', text: 'Tensão nos ombros, pescoço ou bruxismo (ranger dentes)', profileWeights: { 'perf-est-reativo': 3 } },
+  { id: 'o-est-2-2', questionId: 'q-est-2', text: 'Dores de cabeça freqüentes ou estômago queima', profileWeights: { 'perf-est-sobrecarregado': 3 } },
+  { id: 'o-est-2-3', questionId: 'q-est-2', text: 'Insônia ou mente que corre acelerada sem parar', profileWeights: { 'perf-est-sobrecarregado': 2, 'perf-est-reativo': 1 } },
+
+  { id: 'o-est-3-1', questionId: 'q-est-3', text: 'Raramente ou nunca, sinto que não posso parar', profileWeights: { 'perf-est-sobrecarregado': 3 } },
+  { id: 'o-est-3-2', questionId: 'q-est-3', text: 'Apenas aos finais de semana, quando consigo desligar', profileWeights: { 'perf-est-reativo': 3 } },
+  { id: 'o-est-3-3', questionId: 'q-est-3', text: 'Diariamente por alguns minutos, mas de forma inconsistente', profileWeights: { 'perf-est-sobrecarregado': 1, 'perf-est-reativo': 1 } },
+
+  { id: 'o-est-4-1', questionId: 'q-est-4', text: 'Aprender técnicas de respiração e meditação rápida', profileWeights: { 'perf-est-reativo': 3 } },
+  { id: 'o-est-4-2', questionId: 'q-est-4', text: 'Aprender a dizer não e colocar limites na rotina profissional', profileWeights: { 'perf-est-sobrecarregado': 3 } },
+  { id: 'o-est-4-3', questionId: 'q-est-4', text: 'Fazer atividade física prazerosa com mais freqüência', profileWeights: { 'perf-est-sobrecarregado': 1, 'perf-est-reativo': 2 } }
+];
+
+const DEFAULT_MISSIONS: Mission[] = [
+  // --- TABAGISMO ---
+  { id: 'm-tab-1', programId: 'prog-tabagismo', day: 1, title: 'Adiar e Substituir', description: 'Adie o primeiro cigarro do dia em 15 minutos. Quando a vontade bater, beba um copo cheio de água gelada e faça 3 respirações profundas.', xpAwarded: 100, category: 'Habit' },
+  { id: 'm-tab-2', programId: 'prog-tabagismo', day: 2, title: 'Mapeando Cinzeiros', description: 'Remova todos os cinzeiros, isqueiros e maços abertos de locais visíveis em casa e no carro. Crie uma barreira de atrito.', xpAwarded: 100, category: 'Challenge' },
+  { id: 'm-tab-3', programId: 'prog-tabagismo', day: 3, title: 'A Pausa Substituta', description: 'Substitua a pausa do cigarro da tarde por uma caminhada de 5 minutos ou um chá de hortelã sem açúcar.', xpAwarded: 150, category: 'Reflection' },
+  { id: 'm-tab-4', programId: 'prog-tabagismo', day: 4, title: 'Aliado Declarado', description: 'Conte para uma pessoa importante na sua vida que você está no 4º dia da jornada e peça o apoio dela caso sinta fissura.', xpAwarded: 150, category: 'Habit' },
+  { id: 'm-tab-5', programId: 'prog-tabagismo', day: 5, title: 'Respiração de Alívio (SOS)', description: 'Toda vez que sentir o impulso hoje, pratique o Suspiro Fisiológico: inspire duas vezes pelo nariz e expire longamente.', xpAwarded: 200, category: 'Breathing' },
+
+  // --- ANSIEDADE ---
+  { id: 'm-ans-1', programId: 'prog-ansiedade', day: 1, title: 'O Caderno de Descarga', description: 'Escreva em um papel tudo que está preocupando você hoje, sem filtros. Depois dobre o papel e faça 2 minutos de respiração quadrada.', xpAwarded: 100, category: 'Reflection' },
+  { id: 'm-ans-2', programId: 'prog-ansiedade', day: 2, title: 'Ancoragem 5-4-3-2-1', description: 'Quando sentir a mente acelerada, identifique no ambiente: 5 coisas que vê, 4 que toca, 3 que ouve, 2 que cheira e 1 que sente o gosto.', xpAwarded: 100, category: 'Challenge' },
+  { id: 'm-ans-3', programId: 'prog-ansiedade', day: 3, title: 'Micro-meditação Solar', description: 'Sente-se confortavelmente perto de uma janela por 3 minutos e apenas observe o ritmo natural da sua inspiração.', xpAwarded: 150, category: 'Breathing' },
+  { id: 'm-ans-4', programId: 'prog-ansiedade', day: 4, title: 'Dia de Dieta de Telas', description: 'Não abra nenhuma rede social nas primeiras duas horas após acordar hoje. Deixe sua mente despertar sem estímulos.', xpAwarded: 150, category: 'Habit' },
+  { id: 'm-ans-5', programId: 'prog-ansiedade', day: 5, title: 'Diário de Gratidão Real', description: 'Anote 3 pequenos momentos simples do seu dia pelos quais você se sentiu genuinamente grato.', xpAwarded: 200, category: 'Reflection' },
+
+  // --- INSÔNIA ---
+  { id: 'm-ins-1', programId: 'prog-insonia', day: 1, title: 'Pôr do Sol Digital', description: 'Desligue todas as telas eletrônicas 45 minutos antes do seu horário planejado para dormir.', xpAwarded: 100, category: 'Habit' },
+  { id: 'm-ins-2', programId: 'prog-insonia', day: 2, title: 'Higiene do Café', description: 'Não consuma nenhuma bebida com cafeína (café, refrigerantes, chá preto) após as 14:00 de hoje.', xpAwarded: 100, category: 'Challenge' },
+  { id: 'm-ins-3', programId: 'prog-insonia', day: 3, title: 'Alongamento de Descarga', description: 'Faça 5 minutos de alongamentos suaves focado na lombar e pescoço antes de deitar hoje.', xpAwarded: 150, category: 'Breathing' },
+  { id: 'm-ins-4', programId: 'prog-insonia', day: 4, title: 'Cama para Dormir', description: 'Use a cama apenas para dormir. Se passar 20 minutos acordado na cama, levante-se e faça uma atividade calma em luz baixa.', xpAwarded: 150, category: 'Habit' },
+  { id: 'm-ins-5', programId: 'prog-insonia', day: 5, title: 'Banho de Luz Solar', description: 'Pegue 10 minutos de luz natural do sol pela manhã para regular seu cortisol e melatonina.', xpAwarded: 200, category: 'Challenge' },
+
+  // --- EMAGRECIMENTO ---
+  { id: 'm-ema-1', programId: 'prog-emagrecimento', day: 1, title: 'Comida Sem Telas', description: 'Faça sua refeição principal hoje (almoço ou jantar) sem olhar para o celular, TV ou computador. Saboreie cada garfada.', xpAwarded: 100, category: 'Habit' },
+  { id: 'm-ema-2', programId: 'prog-emagrecimento', day: 2, title: 'O Copo de Entrada', description: 'Beba 1 copo grande de água (300ml) exatamente 15 minutos antes das refeições principais hoje.', xpAwarded: 100, category: 'Challenge' },
+  { id: 'm-ema-3', programId: 'prog-emagrecimento', day: 3, title: 'Rastreio de Sentimentos', description: 'Antes de comer qualquer doce ou lanche fora do planejado, pergunte-se: "Estou com fome real ou estou ansioso/entediado?"', xpAwarded: 150, category: 'Reflection' },
+  { id: 'm-ema-4', programId: 'prog-emagrecimento', day: 4, title: 'Prato Colorido Prático', description: 'Garanta que metade do seu prato no almoço seja composto por folhas verdes ou legumes cozidos.', xpAwarded: 150, category: 'Habit' },
+  { id: 'm-ema-5', programId: 'prog-emagrecimento', day: 5, title: 'Caminhada Pós-Refeição', description: 'Faça uma caminhada leve e lenta de 10 minutos logo após o almoço para otimizar sua glicemia.', xpAwarded: 200, category: 'Challenge' },
+
+  // --- ESTRESSE ---
+  { id: 'm-est-1', programId: 'prog-estresse', day: 1, title: 'Alarme de Respiração', description: 'Configure um alarme no meio da tarde. Quando tocar, faça 4 respirações lentas expandindo o abdômen por 4 segundos.', xpAwarded: 100, category: 'Breathing' },
+  { id: 'm-est-2', programId: 'prog-estresse', day: 2, title: 'A Caminhada Sem Rumo', description: 'Faça uma caminhada de 10 minutos ao ar livre sem olhar para o celular, apenas observando a natureza ou prédios.', xpAwarded: 100, category: 'Challenge' },
+  { id: 'm-est-3', programId: 'prog-estresse', day: 3, title: 'Esvaziamento Express', description: 'Anote em uma folha tudo que está tirando seu foco de trabalho. Risque o que você não pode controlar neste exato momento.', xpAwarded: 150, category: 'Reflection' },
+  { id: 'm-est-4', programId: 'prog-estresse', day: 4, title: 'A Regra do Não', description: 'Identifique uma solicitação não essencial no trabalho ou vida pessoal hoje e diga um "não" educado e firme para preservar sua energia.', xpAwarded: 150, category: 'Habit' },
+  { id: 'm-est-5', programId: 'prog-estresse', day: 5, title: 'Desconexão Total', description: 'Fique totalmente offline das 20:00 até o horário de dormir. Desfrute do silêncio ou de uma conversa em família.', xpAwarded: 200, category: 'Challenge' }
+];
+
+const DEFAULT_ACHIEVEMENTS: Achievement[] = [
+  { id: 'ach-primeiro-passo', title: 'Primeiro Passo', description: 'Completou o seu primeiro questionário e mapeou o seu perfil comportamental.', badgeIcon: 'Compass', category: 'General' },
+  { id: 'ach-dia-1', title: 'Pontapé Inicial', description: 'Iniciou a missão do dia 1 e registrou o seu primeiro check-in de humor.', badgeIcon: 'Play', category: 'Streak' },
+  { id: 'ach-streak-3', title: 'Consistência de Bronze', description: 'Manteve 3 dias seguidos de check-ins e missões concluídas.', badgeIcon: 'Zap', category: 'Streak' },
+  { id: 'ach-streak-5', title: 'Foco Inabalável', description: 'Manteve 5 dias seguidos de compromisso com a sua saúde mental e física.', badgeIcon: 'Award', category: 'Streak' },
+  { id: 'ach-xp-500', title: 'Guerreiro de Elite', description: 'Acumulou 500 pontos de experiência no painel NeuroPure.', badgeIcon: 'Sparkles', category: 'XP' },
+  { id: 'ach-comunidade', title: 'Voz Inspiradora', description: 'Postou uma mensagem de apoio ou progresso no mural da comunidade.', badgeIcon: 'MessageSquare', category: 'Community' }
+];
+
+const DEFAULT_POSTS: CommunityPost[] = [
+  {
+    id: 'post-1',
+    userId: 'usr_mock_1',
+    programId: 'prog-tabagismo',
+    userName: 'Carlos André',
+    userProfileName: 'Guerreiro Resiliente',
+    content: 'Hoje foi difícil resistir ao café da tarde sem acender um cigarro, mas bebi água gelada e fiz a respiração 4-7-8 como sugerido na missão do Dia 1. Consegui superar a fissura! Força pessoal! 💪',
+    likes: 12,
+    likedByUserIds: [],
+    createdAt: new Date(Date.now() - 3 * 3600000).toISOString()
+  },
+  {
+    id: 'post-2',
+    userId: 'usr_mock_2',
+    programId: 'prog-tabagismo',
+    userName: 'Fernanda Lima',
+    userProfileName: 'Explorador da Calma',
+    content: 'No meu 4º dia livre do fumo. Sinto meu olfato e paladar voltando com muita força. É inacreditável como as pequenas coisas fazem a diferença. Não desistam, vale a pena demais!',
+    likes: 24,
+    likedByUserIds: [],
+    createdAt: new Date(Date.now() - 8 * 3600000).toISOString()
+  },
+  {
+    id: 'post-3',
+    userId: 'usr_mock_3',
+    programId: 'prog-ansiedade',
+    userName: 'Mariana Costa',
+    userProfileName: 'Sentidor Empático',
+    content: 'Fiz a prática de ancoragem 5-4-3-2-1 durante um pico de estresse no trabalho e deu muito certo. Me trouxe de volta pra terra instantaneamente. Recomendo muito a missão do Dia 2!',
+    likes: 19,
+    likedByUserIds: [],
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString()
+  },
+  {
+    id: 'post-4',
+    userId: 'usr_mock_4',
+    programId: 'prog-insonia',
+    userName: 'Rodrigo Souza',
+    userProfileName: 'Mente Noturna Acelerada',
+    content: 'Ontem fiz o "pôr do sol digital" e dormi 30 minutos mais rápido. Acordei sem aquela fadiga de sempre. Incrível como pequenas mudanças no ambiente dão resultados práticos.',
+    likes: 15,
+    likedByUserIds: [],
+    createdAt: new Date(Date.now() - 12 * 3600000).toISOString()
+  }
+];
+
+export class DBStore {
+  private data!: Schema;
+
+  constructor() {
+    this.init();
+  }
+
+  private init() {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+
+    if (fs.existsSync(DB_FILE)) {
+      try {
+        const raw = fs.readFileSync(DB_FILE, 'utf-8');
+        this.data = JSON.parse(raw);
+        // Ensure all arrays are present
+        this.data.programs = this.data.programs || [];
+        this.data.users = this.data.users || [];
+        this.data.questions = this.data.questions || [];
+        this.data.options = this.data.options || [];
+        this.data.profiles = this.data.profiles || [];
+        this.data.profileRules = this.data.profileRules || [];
+        this.data.answers = this.data.answers || [];
+        this.data.results = this.data.results || [];
+        this.data.missions = this.data.missions || [];
+        this.data.checkins = this.data.checkins || [];
+        this.data.progress = this.data.progress || [];
+        this.data.posts = this.data.posts || [];
+        this.data.achievements = this.data.achievements || [];
+        this.data.supportMessages = this.data.supportMessages || [];
+
+        // Check if DB is outdated (missing the 5 new standard tabagismo profiles)
+        if (!this.data.profiles.some(p => p.id === 'perf-tab-impulsivo')) {
+          console.log('Outdated DB detected, reseeding database...');
+          this.seedDefault();
+        }
+      } catch (err) {
+        console.error('Failed to read db file, creating new db', err);
+        this.seedDefault();
+      }
+    } else {
+      this.seedDefault();
+    }
+  }
+
+  private seedDefault() {
+    this.data = {
+      programs: DEFAULT_PROGRAMS,
+      users: [],
+      questions: DEFAULT_QUESTIONS,
+      options: DEFAULT_OPTIONS,
+      profiles: DEFAULT_PROFILES,
+      profileRules: [
+        { id: 'rule-impulsivo', profileId: 'perf-tab-impulsivo', ruleType: 'weight_sum', description: 'Explorador / Impulsivo' },
+        { id: 'rule-analitico', profileId: 'perf-tab-analitico', ruleType: 'weight_sum', description: 'Estrategista / Analítico' },
+        { id: 'rule-social', profileId: 'perf-tab-social', ruleType: 'weight_sum', description: 'Social / Conector' },
+        { id: 'rule-persistente', profileId: 'perf-tab-persistente', ruleType: 'weight_sum', description: 'Persistente / Guardião' },
+        { id: 'rule-emocional', profileId: 'perf-tab-emocional', ruleType: 'weight_sum', description: 'Emocional / Renovador' }
+      ],
+      answers: [],
+      results: [],
+      missions: DEFAULT_MISSIONS,
+      checkins: [],
+      progress: [],
+      posts: DEFAULT_POSTS,
+      achievements: DEFAULT_ACHIEVEMENTS
+    };
+    this.save();
+  }
+
+  private save() {
+    fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
+  }
+
+  // --- Programs API ---
+  public getPrograms(): Program[] {
+    return this.data.programs;
+  }
+
+  public getProgram(id: string): Program | undefined {
+    return this.data.programs.find(p => p.id === id || p.slug === id);
+  }
+
+  public saveProgram(program: Program): Program {
+    const idx = this.data.programs.findIndex(p => p.id === program.id);
+    if (idx !== -1) {
+      this.data.programs[idx] = program;
+    } else {
+      this.data.programs.push(program);
+    }
+    this.save();
+    return program;
+  }
+
+  public deleteProgram(id: string) {
+    this.data.programs = this.data.programs.filter(p => p.id !== id);
+    this.data.questions = this.data.questions.filter(q => q.programId !== id);
+    this.data.profiles = this.data.profiles.filter(p => p.programId !== id);
+    this.data.missions = this.data.missions.filter(m => m.programId !== id);
+    this.save();
+  }
+
+  // --- Users API ---
+  public getUsers(): User[] {
+    return this.data.users;
+  }
+
+  public getUser(id: string): User | undefined {
+    return this.data.users.find(u => u.id === id);
+  }
+
+  public createUser(name: string, email: string, programId?: string): User {
+    const newUser: User = {
+      id: 'usr_' + Math.random().toString(36).substring(2, 11),
+      name,
+      email,
+      createdAt: new Date().toISOString(),
+      currentProgramId: programId
+    };
+    this.data.users.push(newUser);
+    this.save();
+    return newUser;
+  }
+
+  public updateUserProgram(userId: string, programId: string): User | undefined {
+    const user = this.data.users.find(u => u.id === userId);
+    if (user) {
+      user.currentProgramId = programId;
+      this.save();
+    }
+    return user;
+  }
+
+  // --- Questions API ---
+  public getQuestions(programId?: string): Question[] {
+    let list = this.data.questions;
+    if (programId) {
+      list = list.filter(q => q.programId === programId);
+    }
+    return [...list].sort((a, b) => a.order - b.order);
+  }
+
+  public createQuestion(text: string, order: number, programId: string): Question {
+    const q: Question = {
+      id: 'q_' + Math.random().toString(36).substring(2, 11),
+      programId,
+      text,
+      order
+    };
+    this.data.questions.push(q);
+    this.save();
+    return q;
+  }
+
+  public updateQuestion(id: string, text: string, order: number): Question | undefined {
+    const q = this.data.questions.find(item => item.id === id);
+    if (q) {
+      q.text = text;
+      q.order = order;
+      this.save();
+    }
+    return q;
+  }
+
+  public deleteQuestion(id: string) {
+    this.data.questions = this.data.questions.filter(q => q.id !== id);
+    this.data.options = this.data.options.filter(o => o.questionId !== id);
+    this.data.answers = this.data.answers.filter(a => a.questionId !== id);
+    this.save();
+  }
+
+  // --- Options API ---
+  public getOptions(): QuestionOption[] {
+    return this.data.options;
+  }
+
+  public getOptionsByQuestion(questionId: string): QuestionOption[] {
+    return this.data.options.filter(o => o.questionId === questionId);
+  }
+
+  public saveOptionsForQuestion(questionId: string, options: Omit<QuestionOption, 'questionId'>[]) {
+    // Delete existing options for this question
+    this.data.options = this.data.options.filter(o => o.questionId !== questionId);
+    
+    // Add new ones
+    options.forEach(opt => {
+      this.data.options.push({
+        id: opt.id || 'opt_' + Math.random().toString(36).substring(2, 11),
+        questionId,
+        text: opt.text,
+        profileWeights: opt.profileWeights || {}
+      });
+    });
+    this.save();
+  }
+
+  // --- Profiles API ---
+  public getProfiles(programId?: string): Profile[] {
+    if (programId) {
+      return this.data.profiles.filter(p => p.programId === programId);
+    }
+    return this.data.profiles;
+  }
+
+  public saveProfile(profile: Profile): Profile {
+    const idx = this.data.profiles.findIndex(p => p.id === profile.id);
+    if (idx !== -1) {
+      this.data.profiles[idx] = profile;
+    } else {
+      this.data.profiles.push(profile);
+    }
+    this.save();
+    return profile;
+  }
+
+  public deleteProfile(id: string) {
+    this.data.profiles = this.data.profiles.filter(p => p.id !== id);
+    this.data.profileRules = this.data.profileRules.filter(r => r.profileId !== id);
+    this.save();
+  }
+
+  // --- ProfileRules API ---
+  public getProfileRules(): ProfileRule[] {
+    return this.data.profileRules;
+  }
+
+  public saveProfileRule(rule: ProfileRule): ProfileRule {
+    const idx = this.data.profileRules.findIndex(r => r.id === rule.id);
+    if (idx !== -1) {
+      this.data.profileRules[idx] = rule;
+    } else {
+      this.data.profileRules.push(rule);
+    }
+    this.save();
+    return rule;
+  }
+
+  // --- UserAnswers API ---
+  public getAnswers(): UserAnswer[] {
+    return this.data.answers;
+  }
+
+  public saveAnswer(userId: string, programId: string, questionId: string, optionId: string): UserAnswer {
+    // Remove if already answered this question by same user in same program
+    this.data.answers = this.data.answers.filter(a => !(a.userId === userId && a.questionId === questionId && a.programId === programId));
+
+    const answer: UserAnswer = {
+      id: 'ans_' + Math.random().toString(36).substring(2, 11),
+      userId,
+      programId,
+      questionId,
+      optionId,
+      createdAt: new Date().toISOString()
+    };
+    this.data.answers.push(answer);
+    this.save();
+    return answer;
+  }
+
+  // --- Results Calculator ---
+  public calculateAndSaveResult(userId: string, programId: string): Result | undefined {
+    const userAnswers = this.data.answers.filter(a => a.userId === userId && a.programId === programId);
+    if (userAnswers.length === 0) return undefined;
+
+    const programProfiles = this.data.profiles.filter(p => p.programId === programId);
+    if (programProfiles.length === 0) return undefined;
+
+    // Sum weights for each profile
+    const scores: Record<string, number> = {};
+    programProfiles.forEach(p => {
+      scores[p.id] = 0;
+    });
+
+    userAnswers.forEach(answer => {
+      const option = this.data.options.find(o => o.id === answer.optionId);
+      if (option && option.profileWeights) {
+        Object.entries(option.profileWeights).forEach(([profileId, weight]) => {
+          if (scores[profileId] !== undefined) {
+            scores[profileId] = (scores[profileId] || 0) + (weight || 0);
+          }
+        });
+      }
+    });
+
+    // Find profile with maximum score
+    let selectedProfileId = programProfiles[0]?.id || '';
+    let maxScore = -1;
+
+    Object.entries(scores).forEach(([profileId, score]) => {
+      if (score > maxScore) {
+        maxScore = score;
+        selectedProfileId = profileId;
+      }
+    });
+
+    // Save result
+    const result: Result = {
+      id: 'res_' + Math.random().toString(36).substring(2, 11),
+      userId,
+      programId,
+      profileId: selectedProfileId,
+      calculatedAt: new Date().toISOString(),
+      scores
+    };
+
+    // Remove any previous results for this user & program
+    this.data.results = this.data.results.filter(r => !(r.userId === userId && r.programId === programId));
+    this.data.results.push(result);
+
+    // Auto-create/initialize program progress. Reset progress if it already exists to start fresh on Day 1
+    let prog = this.data.progress.find(p => p.userId === userId && p.programId === programId);
+    if (prog) {
+      prog.currentDay = 1;
+      prog.totalXp = 0;
+      prog.completedMissionsCount = 0;
+      prog.currentStreak = 0;
+      prog.bestStreak = 0;
+      prog.completedMissionsDays = [];
+      prog.completedTodayTasks = [];
+      prog.bossDefeatedDays = [];
+      prog.extraChallengeCompletedDays = [];
+      prog.triggers = [];
+    } else {
+      this.getOrInitializeProgress(userId, programId);
+    }
+
+    this.save();
+    return result;
+  }
+
+  public getResultByUserId(userId: string, programId: string): Result | undefined {
+    return this.data.results.find(r => r.userId === userId && r.programId === programId);
+  }
+
+  public getFullResults(): (Result & { user?: User; profile?: Profile; program?: Program })[] {
+    return this.data.results.map(r => {
+      const user = this.data.users.find(u => u.id === r.userId);
+      const profile = this.data.profiles.find(p => p.id === r.profileId);
+      const program = this.data.programs.find(p => p.id === r.programId);
+      return {
+        ...r,
+        user,
+        profile,
+        program
+      };
+    });
+  }
+
+  // --- Missions API ---
+  public getMissions(programId?: string): Mission[] {
+    if (programId) {
+      return this.data.missions.filter(m => m.programId === programId);
+    }
+    return this.data.missions;
+  }
+
+  public saveMission(mission: Mission): Mission {
+    const idx = this.data.missions.findIndex(m => m.id === mission.id);
+    if (idx !== -1) {
+      this.data.missions[idx] = mission;
+    } else {
+      this.data.missions.push(mission);
+    }
+    this.save();
+    return mission;
+  }
+
+  public deleteMission(id: string) {
+    this.data.missions = this.data.missions.filter(m => m.id !== id);
+    this.save();
+  }
+
+  // --- Checkins & Progress Engine ---
+  public getOrInitializeProgress(userId: string, programId: string): UserProgress {
+    let prog = this.data.progress.find(p => p.userId === userId && p.programId === programId);
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    if (!prog) {
+      prog = {
+        id: 'prog_' + Math.random().toString(36).substring(2, 11),
+        userId,
+        programId,
+        currentDay: 1,
+        totalXp: 0,
+        completedMissionsCount: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        lastActivityDate: todayStr,
+        completedMissionsDays: [],
+        completedTodayTasks: [],
+        bossDefeatedDays: [],
+        extraChallengeCompletedDays: [],
+        triggers: []
+      };
+      this.data.progress.push(prog);
+      this.save();
+    } else {
+      // Ensure arrays are initialized on existing progress records
+      if (!prog.completedTodayTasks) prog.completedTodayTasks = [];
+      if (!prog.bossDefeatedDays) prog.bossDefeatedDays = [];
+      if (!prog.extraChallengeCompletedDays) prog.extraChallengeCompletedDays = [];
+      if (!prog.triggers) prog.triggers = [];
+      
+      // Reset daily checklist tasks on a new calendar day
+      if (prog.lastActivityDate && prog.lastActivityDate !== todayStr) {
+        prog.completedTodayTasks = [];
+      }
+    }
+    return prog;
+  }
+
+  public addXp(userId: string, programId: string, amount: number): UserProgress {
+    const prog = this.getOrInitializeProgress(userId, programId);
+    prog.totalXp += amount;
+    this.save();
+    return prog;
+  }
+
+  public completeTodayTask(userId: string, programId: string, task: string): { progress: UserProgress; xpEarned: number } {
+    const prog = this.getOrInitializeProgress(userId, programId);
+    if (!prog.completedTodayTasks) prog.completedTodayTasks = [];
+    
+    if (prog.completedTodayTasks.includes(task)) {
+      return { progress: prog, xpEarned: 0 };
+    }
+    
+    let xpEarned = 0;
+    switch (task) {
+      case 'checkin':
+        xpEarned = 30; // Check-in → +30 XP
+        break;
+      case 'message':
+        xpEarned = 20; // Ler mensagem do dia → +20 XP (or checklist: +20 XP, general message read is +10/20 XP)
+        break;
+      case 'breathing':
+        xpEarned = 40; // Exercício de respiração → +40 XP
+        break;
+      case 'trigger':
+        xpEarned = 30; // Registrar um gatilho → +30 XP
+        break;
+      case 'community':
+        xpEarned = 20; // Entrar na comunidade → +20 XP
+        break;
+      case 'sos':
+        xpEarned = 20; // SOS resolvido → +20 XP
+        break;
+      default:
+        xpEarned = 10;
+    }
+    
+    prog.completedTodayTasks.push(task);
+    prog.totalXp += xpEarned;
+    
+    // Save last activity date
+    const todayStr = new Date().toISOString().split('T')[0];
+    prog.lastActivityDate = todayStr;
+    
+    this.save();
+    return { progress: prog, xpEarned };
+  }
+
+  public registerTrigger(userId: string, programId: string, type: string, intensity: number, notes?: string): { progress: UserProgress; xpEarned: number } {
+    const prog = this.getOrInitializeProgress(userId, programId);
+    if (!prog.triggers) prog.triggers = [];
+    
+    const newTrigger = {
+      id: 'trg_' + Math.random().toString(36).substring(2, 11),
+      timestamp: new Date().toISOString(),
+      type,
+      intensity,
+      notes
+    };
+    prog.triggers.push(newTrigger);
+    
+    // Complete the trigger task on the checklist (awards 30 XP)
+    const result = this.completeTodayTask(userId, programId, 'trigger');
+    
+    this.save();
+    return result;
+  }
+
+  public completeExtraChallenge(userId: string, programId: string, day: number): { progress: UserProgress; xpEarned: number } {
+    const prog = this.getOrInitializeProgress(userId, programId);
+    if (!prog.extraChallengeCompletedDays) prog.extraChallengeCompletedDays = [];
+    
+    if (prog.extraChallengeCompletedDays.includes(day)) {
+      return { progress: prog, xpEarned: 0 };
+    }
+    
+    prog.extraChallengeCompletedDays.push(day);
+    prog.totalXp += 50; // Extra challenge → +50 XP
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    prog.lastActivityDate = todayStr;
+    
+    this.save();
+    return { progress: prog, xpEarned: 50 };
+  }
+
+  public defeatWeeklyBoss(userId: string, programId: string, week: number): { progress: UserProgress; xpEarned: number } {
+    const prog = this.getOrInitializeProgress(userId, programId);
+    if (!prog.bossDefeatedDays) prog.bossDefeatedDays = [];
+    
+    if (prog.bossDefeatedDays.includes(week)) {
+      return { progress: prog, xpEarned: 0 };
+    }
+    
+    prog.bossDefeatedDays.push(week);
+    prog.totalXp += 500; // Boss weekly → +500 XP
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    prog.lastActivityDate = todayStr;
+    
+    this.save();
+    return { progress: prog, xpEarned: 500 };
+  }
+
+  public completeMissionForDay(userId: string, programId: string, day: number): { progress: UserProgress; xpEarned: number; streakBonusAwarded: boolean } {
+    const prog = this.getOrInitializeProgress(userId, programId);
+    
+    // Check if already completed this day's mission
+    if (prog.completedMissionsDays.includes(day)) {
+      return { progress: prog, xpEarned: 0, streakBonusAwarded: false };
+    }
+
+    const xpEarned = 40; // Missão principal → +40 XP
+
+    prog.completedMissionsDays.push(day);
+    prog.completedMissionsCount += 1;
+    prog.totalXp += xpEarned;
+
+    // Advanced streak handling
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastActiveStr = prog.lastActivityDate;
+
+    let streakIncremented = false;
+    if (lastActiveStr === todayStr) {
+      // Already active today, streak stays
+    } else {
+      const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      if (lastActiveStr === yesterdayStr || lastActiveStr === '') {
+        prog.currentStreak += 1;
+        streakIncremented = true;
+      } else {
+        prog.currentStreak = 1; // Streak broken
+        streakIncremented = true;
+      }
+      if (prog.currentStreak > prog.bestStreak) {
+        prog.bestStreak = prog.currentStreak;
+      }
+      prog.lastActivityDate = todayStr;
+    }
+
+    // Check if streak incremented and is a multiple of 7 to award +150 XP consecutive streak bonus!
+    let streakBonusAwarded = false;
+    if (streakIncremented && prog.currentStreak > 0 && prog.currentStreak % 7 === 0) {
+      prog.totalXp += 150; // 7 dias consecutivos → +150 XP
+      streakBonusAwarded = true;
+    }
+
+    // Progress day after a threshold or let them proceed day-by-day manually!
+    if (day === prog.currentDay && prog.currentDay < 21) {
+      prog.currentDay += 1;
+    }
+
+    this.save();
+    return { progress: prog, xpEarned, streakBonusAwarded };
+  }
+
+  public saveCheckIn(userId: string, programId: string, day: number, mood: CheckIn['mood'], cravingLevel: number, notes?: string): CheckIn {
+    const checkin: CheckIn = {
+      id: 'chk_' + Math.random().toString(36).substring(2, 11),
+      userId,
+      programId,
+      day,
+      completedAt: new Date().toISOString(),
+      mood,
+      cravingLevel,
+      notes
+    };
+    this.data.checkins.push(checkin);
+    
+    // Auto-complete the check-in task on the checklist (awards 30 XP)
+    this.completeTodayTask(userId, programId, 'checkin');
+
+    this.save();
+    return checkin;
+  }
+
+  public getCheckins(userId: string, programId: string): CheckIn[] {
+    return this.data.checkins.filter(c => c.userId === userId && c.programId === programId);
+  }
+
+  // --- Community Posts API ---
+  public getCommunityPosts(programId: string): CommunityPost[] {
+    return this.data.posts
+      .filter(p => p.programId === programId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public createCommunityPost(userId: string, programId: string, userName: string, profileName: string, content: string): CommunityPost {
+    const newPost: CommunityPost = {
+      id: 'post_' + Math.random().toString(36).substring(2, 11),
+      userId,
+      programId,
+      userName,
+      userProfileName: profileName,
+      content,
+      likes: 0,
+      likedByUserIds: [],
+      createdAt: new Date().toISOString()
+    };
+    this.data.posts.unshift(newPost);
+    this.save();
+    return newPost;
+  }
+
+  public toggleLikePost(postId: string, userId: string): CommunityPost | undefined {
+    const post = this.data.posts.find(p => p.id === postId);
+    if (post) {
+      if (!post.likedByUserIds) {
+        post.likedByUserIds = [];
+      }
+      const idx = post.likedByUserIds.indexOf(userId);
+      if (idx !== -1) {
+        post.likedByUserIds.splice(idx, 1);
+        post.likes = Math.max(0, post.likes - 1);
+      } else {
+        post.likedByUserIds.push(userId);
+        post.likes += 1;
+      }
+      this.save();
+    }
+    return post;
+  }
+
+  // --- Achievements API ---
+  public getAchievements(): Achievement[] {
+    return this.data.achievements;
+  }
+
+  // --- Support API ---
+  public getSupportMessages(): SupportMessage[] {
+    this.data.supportMessages = this.data.supportMessages || [];
+    return this.data.supportMessages;
+  }
+
+  public addSupportMessage(msg: Omit<SupportMessage, 'id' | 'createdAt'>): SupportMessage {
+    this.data.supportMessages = this.data.supportMessages || [];
+    const newMsg: SupportMessage = {
+      ...msg,
+      id: `sup_${Math.random().toString(36).substring(2, 11)}`,
+      createdAt: new Date().toISOString()
+    };
+    this.data.supportMessages.push(newMsg);
+    this.save();
+    return newMsg;
+  }
+
+  public resetAllData() {
+    this.seedDefault();
+  }
+}
+
+export const dbStore = new DBStore();
